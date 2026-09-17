@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {migrate,validState,archiveCard,restoreCard,projectAction,visibleCard} from './model.mjs';
+const old={version:1,cards:[{id:'card1',title:'测试任务',summary:'描述',notes:'笔记',status:'ACTIVE',surface:'today',lane:'NOW',home_area:'work',home_module:'任务',visual_dna:{family:'cream-index',rotation:-1.4},positions:{desk:{x:180,y:90}},history:[],checklist:[],links:[],attachments:[],tags:['保留标签'],created_at:'2026-01-01T00:00:00Z'}],modules:{work:['任务']},layouts:{work:{x:240,y:140}},zoneOrder:['work']};
+const s=migrate(old,[{id:'work',name:'工作'}]),c=s.cards[0],dna=structuredClone(c.visual_dna);
+assert.equal(validState(s,['cream-index']),true);assert.equal(old.version,1);assert.deepEqual(c.positions,old.cards[0].positions);
+archiveCard(c,true,'2026-09-17T08:00:00Z');assert.equal(c.surface,'archive');assert.equal(c.completed_at,'2026-09-17T08:00:00Z');assert.equal(c.home_area,'work');assert.deepEqual(c.visual_dna,dna);assert.deepEqual(c.tags,['保留标签']);
+projectAction(s,'work','archive');assert.equal(visibleCard(s,c),false);projectAction(s,'work','restore');assert.equal(c.surface,'archive');assert.equal(c.status,'DONE');
+restoreCard(s,c);assert.equal(c.surface,'today');assert.equal(c.lane,'NOW');assert.equal(c.status,'ACTIVE');assert.equal(c.completed_at,null);
+projectAction(s,'work','delete');assert.equal(s.projects[0].status,'deleted');assert.equal(s.cards.length,1);projectAction(s,'work','restore');assert.deepEqual(c.visual_dna,dna);
+s.projects.push({id:'custom',name:'新项目',style:'custom',status:'active'});s.modules.custom=['文件夹'];s.zoneOrder.push('custom');assert.ok(validState(s,['cream-index']));
+assert.ok(validState(JSON.parse(JSON.stringify(s)),['cream-index']));assert.equal(s.layouts.work.x,240);
+const previousDone=structuredClone(old);previousDone.cards[0].status='DONE';assert.equal(migrate(previousDone,[{id:'work',name:'工作'}]).cards[0].surface,'archive');
+const invalid=structuredClone(s);invalid.cards[0].attachments=[{id:'file',name:'x',data:'javascript:alert(1)'}];assert.equal(validState(invalid,['cream-index']),false);
+console.log('PASS: v1 migration, dynamic projects, completion, timestamps, identity, project/task lifecycle separation, restore, delete recovery, persistence, attachment validation');
