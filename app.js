@@ -101,9 +101,11 @@ function startDrag(e,el,kind){
     clone=el.cloneNode(true);
     // Freeze inherited dimensions and typography once, before the pointer loop.
     const originals=[el,...el.querySelectorAll('*')],copies=[clone,...clone.querySelectorAll('*')];
-    originals.forEach((node,i)=>{const cs=getComputedStyle(node);for(const name of cs)copies[i].style.setProperty(name,cs.getPropertyValue(name));copies[i].removeAttribute('id');copies[i].style.pointerEvents='none';});
+    const frozenProperties=['box-sizing','width','height','min-width','min-height','max-width','max-height','padding','margin','border','border-radius','background','color','font','letter-spacing','line-height','display','gap','flex','align-items','justify-content','white-space','transform','transform-origin','position','top','right','bottom','left','box-shadow'];
+    originals.forEach((node,i)=>{const cs=getComputedStyle(node);for(const name of frozenProperties)copies[i].style.setProperty(name,cs.getPropertyValue(name));copies[i].removeAttribute('id');copies[i].style.pointerEvents='none';});
     clone.classList.add('drag-proxy');clone.setAttribute('aria-hidden','true');
     Object.assign(clone.style,{position:'fixed',left:baseLeft+'px',top:baseTop+'px',margin:'0',width:el.offsetWidth+'px',height:el.offsetHeight+'px',transformOrigin:'50% 50%',translate:'none',scale:'none',transition:'none',animation:'none',zIndex:'1000',pointerEvents:'none',transform:`translate3d(0,0,0) rotate(${rotation}deg)`});
+    clone.style.setProperty('width',width+'px','important');clone.style.setProperty('height',height+'px','important');
     document.body.append(clone);el.classList.add('drag-placeholder');document.body.classList.add('dragging');
     el.setPointerCapture(e.pointerId);
     if(kind==='card')$$('[data-drop]').filter(n=>!el.contains(n)).forEach(n=>n.classList.add('drop-ready'));
