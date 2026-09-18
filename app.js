@@ -1,5 +1,5 @@
-import {bindContinuousInput,installTooltips} from './interactions.mjs?v=4';
-import {paperTilt,paperPose,paperVariant} from './tactile.mjs?v=4';
+import {bindContinuousInput,installTooltips} from './interactions.mjs?v=5';
+import {paperTilt,paperPose,paperVariant} from './tactile.mjs?v=5';
 import {migrate,validState as validate,archiveCard,restoreCard,projectAction,visibleCard} from './model.mjs';
 const $=(s,p=document)=>p.querySelector(s), $$=(s,p=document)=>[...p.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -77,6 +77,14 @@ function action(c,a){if(a==='trash'){snapshot();c.surface='trash';change(c,'丢�
 function newPaper(area=null,module=null){closeOverlay();lastFocus=document.activeElement;$('#overlay').innerHTML=`<div class="veil"></div><div class="new-paper" role="dialog" aria-modal="true" aria-label="新建纸条"><small>${esc($('#new-type').value)} / ${area?esc(zones().find(z=>z.id===area).name):'INBOX'}</small><textarea id="new-title" placeholder="写点什么…" aria-label="新纸条内容"></textarea><small>Enter 收好 · Shift Enter 换行</small><button id="new-save">收好 ↗</button></div>`;$('.veil').onclick=closeOverlay;const submit=()=>{const title=$('#new-title').value.trim();if(!title)return;const c=make(title,area,module,$('#new-type').value,families[Math.floor(Math.random()*families.length)]);state.cards.push(c);save();closeOverlay();render();toast(area?'纸条已放好':'念头已收进 INBOX');};$('#new-save').onclick=submit;$('#new-title').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();submit();}};$('#new-title').focus();}
 function move(c,target,module){snapshot();if(c.surface==='archive'&&target!=='archive')restoreCard(state,c);c.stack_id=null;c.positions={};if(target.startsWith('zone:')){c.home_area=target.slice(5);if(!state.modules[c.home_area].length)state.modules[c.home_area].push('纸片');c.home_module=module||state.modules[c.home_area][0];c.surface='home';c.status=c.status==='WAITING'?'ACTIVE':c.status;}else if(target.startsWith('module:')){c.home_area=view;c.home_module=target.slice(7);c.surface='home';}else if(target.startsWith('lane:')){c.surface='today';c.lane=target.slice(5);if(c.lane==='WAITING')c.status='WAITING';}else if(target==='archive')archiveCard(c,false);else {c.surface=target;if(target==='today')c.lane='TODAY';}change(c,'移动到 '+(module||target));toast('已放好',true);}
 let suppressClickUntil=0,pendingPointer=null;
+window.DESK_DEBUG??=new URLSearchParams(location.search).has('desk_debug');
+function dragDebug(values={}){
+  let panel=$('#drag-debug');
+  if(!window.DESK_DEBUG){panel?.remove?.();return;}
+  if(!panel){panel=document.createElement('pre');panel.id='drag-debug';document.body.append(panel);}
+  const v={pointer:'—',velocityX:'0.00',tilt:'0.00°',scale:'1.000',dragging:'false',target:'—',reducedMotion:String(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false),...values};
+  panel.textContent=`DRAG STATE\npointer: ${v.pointer}\nvelocityX: ${v.velocityX}\ntilt: ${v.tilt}\nscale: ${v.scale}\ndragging: ${v.dragging}\ntarget: ${v.target}\nreducedMotion: ${v.reducedMotion}`;
+}
 document.addEventListener('click',e=>{if(performance.now()<suppressClickUntil){e.preventDefault();e.stopImmediatePropagation();}},true);
 function bindLayouts(){
   $$('[data-layout]').forEach(el=>{
@@ -96,9 +104,10 @@ function startDrag(e,el,kind){
   const key=kind==='card'?positionKey():layoutID(id);
   const previous=structuredClone((c?c.positions[key]:state.layouts[key])||{x:0,y:0});
   const startX=e.clientX,startY=e.clientY;
-  let lastInput=performance.now(),lastPointerX=startX,velocityTilt=0,currentTilt=0,lastFrame=0,pickedAt=0,anchor={x:0,y:0},lastPose=null;
+  let lastInput=performance.now(),lastPointerX=startX,velocityX=0,velocityTilt=0,currentTilt=0,lastFrame=0,pickedAt=0,anchor={x:0,y:0},lastPose=null;
   const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
   const weight=kind==='card'?'paper':'folder';
+  dragDebug({pointer:`${Math.round(startX)} / ${Math.round(startY)}`,dragging:'false'});
   const pressTransform=getComputedStyle(el).transform;
   el.classList.add('paper-pressed');
   const press=reduced?null:el.animate?.([{transform:pressTransform},{transform:pressTransform+' scale(.995)'}],{duration:80,fill:'forwards',easing:'ease-out'});
@@ -134,19 +143,20 @@ function startDrag(e,el,kind){
     frame=0;if(!active)return;
     const t=performance.now(),dt=Math.min(40,Math.max(1,t-lastFrame));lastFrame=t;
     const age=Math.max(0,t-pickedAt),lift=reduced?0:1-Math.pow(1-Math.min(1,age/140),3);
-    const desired=reduced?0:velocityTilt*Math.exp(-Math.max(0,t-lastInput)/75);
-    currentTilt+=(desired-currentTilt)*(1-Math.exp(-dt/(weight==='paper'?55:95)));
+    const desired=reduced?0:velocityTilt*Math.exp(-Math.max(0,t-lastInput)/(weight==='paper'?110:150));
+    currentTilt+=(desired-currentTilt)*(1-Math.exp(-dt/(weight==='paper'?75:120)));
     deltaX=x-startX;deltaY=y-startY;
     lastPose=paperPose(deltaX,deltaY,rotation,currentTilt,lift,anchor,weight);
     clone.style.transform=`translate3d(${lastPose.x}px,${lastPose.y}px,0) rotate(${lastPose.angle}deg) scale(${lastPose.scale})`;
 
-    clone.style.setProperty('--drag-shadow',`1px ${2+7*lift}px ${3+8*lift}px #4b3b2938`);
+    clone.style.setProperty('--drag-shadow',`1px ${2+10*lift}px ${3+15*lift}px rgba(75,59,41,${.22+.1*lift})`);
     clone.style.setProperty('--tab-tilt',`${-currentTilt*.4}deg`);
     const next=findTarget();if(next!==target){target?.classList.remove('drop-hover');target=next;target?.classList.add('drop-hover');}
+    dragDebug({pointer:`${Math.round(x)} / ${Math.round(y)}`,velocityX:velocityX.toFixed(2),tilt:`${currentTilt.toFixed(2)}°`,scale:lastPose.scale.toFixed(3),dragging:'true',target:target?.dataset.drop||'—',reducedMotion:String(reduced)});
     if(!reduced&&(age<140||Math.abs(currentTilt)>.015||Math.abs(desired)>.015))frame=requestAnimationFrame(paint);
   }
   function onMove(ev){
-    if(ev.pointerId!==e.pointerId)return;const t=performance.now();velocityTilt=paperTilt((ev.clientX-lastPointerX)/Math.max(8,t-lastInput),weight);lastPointerX=ev.clientX;lastInput=t;x=ev.clientX;y=ev.clientY;
+    if(ev.pointerId!==e.pointerId)return;const t=performance.now();velocityX=(ev.clientX-lastPointerX)/Math.max(8,t-lastInput);velocityTilt=paperTilt(velocityX,weight);lastPointerX=ev.clientX;lastInput=t;x=ev.clientX;y=ev.clientY;
     if(!active&&Math.hypot(x-startX,y-startY)>=6)begin();
     if(active){ev.preventDefault();if(!frame)frame=requestAnimationFrame(paint);}
   }
@@ -157,6 +167,7 @@ function startDrag(e,el,kind){
     document.removeEventListener('pointermove',onMove);document.removeEventListener('pointerup',onUp);document.removeEventListener('pointercancel',cancel);document.removeEventListener('keydown',onKey);window.removeEventListener('blur',cancel);
     if(el.hasPointerCapture(e.pointerId))el.releasePointerCapture(e.pointerId);
     if(active)suppressClickUntil=performance.now()+180;drag=null;
+    dragDebug({pointer:`${Math.round(x)} / ${Math.round(y)}`,velocityX:velocityX.toFixed(2),tilt:`${(lastPose?.angle-rotation||0).toFixed(2)}°`,scale:(lastPose?.scale||1).toFixed(3),dragging:'false',target:target?.dataset.drop||'—',reducedMotion:String(reduced)});
   }
   function cancel(){cleanup();}
   function onKey(ev){if(ev.key==='Escape'){ev.preventDefault();cancel();}}
@@ -262,19 +273,19 @@ function bindChecklist(c){
     const panel=$('.drawer'),scroll=panel.scrollTop;
     const i={id:uid(),text,done:false};c.checklist.push(i);change(c,'添加清单项');mainDirty=true;
     checks.insertAdjacentHTML('beforeend',checkHTML(i));
-    input.value='';input.focus({preventScroll:true});panel.scrollTop=scroll;
+    input.value='';input.focus({preventScroll:true});panel.scrollTop=scroll;requestAnimationFrame(()=>panel.scrollTop=scroll);
   });
 }
 
 function settlePaper(el,held,rotation=0,weight='paper'){
   if(!el||!held||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
   const x=parseFloat(el.style.getPropertyValue('--x'))||0,y=parseFloat(el.style.getPropertyValue('--y'))||0;
-  const overshoot=rotation-(held.angle-rotation)*.16;
+  const overshoot=rotation-(held.angle-rotation)*.22;
   el.animate?.([
     {transform:`translate3d(${x}px,${y}px,0) rotate(${held.angle}deg) scale(${held.scale})`,boxShadow:'1px 9px 11px #51432e38'},
-    {transform:`translate3d(${x}px,${y}px,0) rotate(${overshoot}deg) scale(.997)`,boxShadow:'0 1px 1px #51432e28',offset:.7},
+    {transform:`translate3d(${x}px,${y}px,0) rotate(${overshoot}deg) scale(.994)`,boxShadow:'0 1px 1px #51432e28',offset:.68},
     {transform:`translate3d(${x}px,${y}px,0) rotate(${rotation}deg) scale(1)`,boxShadow:'0 1px 1px #51432e28'}
-  ],{duration:weight==='paper'?200:240,easing:'ease-out'});
+  ],{duration:weight==='paper'?230:260,easing:'cubic-bezier(.2,.75,.25,1)'});
 }
 function receivePaper(el){
   if(!el||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;

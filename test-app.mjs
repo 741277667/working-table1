@@ -8,7 +8,7 @@ import {migrate,validState as validate,archiveCard,restoreCard,projectAction,vis
 // Minimal DOM adapter exercises application startup and renders; not a browser test.
 const nodes=new Map(),memory=new Map();
 function node(selector){if(!nodes.has(selector))nodes.set(selector,{innerHTML:'',textContent:'',style:{},dataset:{},children:[],classList:{add(){},remove(){},toggle(){}},removeAttribute(){},setAttribute(){},getAttribute(){return ''},focus(){},select(){},querySelector:s=>node(s),querySelectorAll:()=>[],addEventListener(){}});return nodes.get(selector);}
-const ctx=vm.createContext({bindContinuousInput,installTooltips:()=>()=>{},paperTilt,paperPose,paperVariant,console,crypto:webcrypto,structuredClone,migrate,validate,archiveCard,restoreCard,projectAction,visibleCard,URL,Date,Math,innerWidth:1440,localStorage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v)},document:{querySelector:s=>node(s),querySelectorAll:()=>[],body:node('body'),addEventListener(){}},MutationObserver:class{observe(){}},queueMicrotask:fn=>fn(),setTimeout:()=>0,clearTimeout(){},performance:{now:()=>0}});
+const ctx=vm.createContext({bindContinuousInput,installTooltips:()=>()=>{},paperTilt,paperPose,paperVariant,console,crypto:webcrypto,structuredClone,migrate,validate,archiveCard,restoreCard,projectAction,visibleCard,URL,Date,Math,innerWidth:1440,window:{DESK_DEBUG:false},localStorage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v)},document:{querySelector:s=>node(s),querySelectorAll:()=>[],body:node('body'),addEventListener(){}},MutationObserver:class{observe(){}},queueMicrotask:fn=>fn(),setTimeout:()=>0,clearTimeout(){},performance:{now:()=>0}});
 vm.runInContext(fs.readFileSync('app.js','utf8').replace(/^import .*\n/gm,''),ctx);
 assert.match(node('#main').innerHTML,/我的桌面/);
 assert.doesNotMatch(node('#main').innerHTML,/布置桌面|drag-destinations/);
@@ -48,16 +48,16 @@ vm.runInContext("startDrag(testDown,testElement,'card')",ctx);events.get('pointe
 vm.runInContext("state.cards[2].positions={};startDrag(testDown,testElement,'card')",ctx);events.get('pointermove')(pointer(260,250));ctx.window.scrollY=100;events.get('pointerup')(pointer(260,250));assert.equal(style['--y'],'130px','window scroll is included exactly once');
 console.log('PASS: drag threshold, no writes during motion, 300px movement without snapback, persisted coordinates, pointer cancellation, scroll compensation');
 
-assert.equal(paperTilt(100),-4.5);assert.equal(paperTilt(-100),4.5);assert.equal(paperTilt(0),0);
+assert.equal(paperTilt(100),-6.5);assert.equal(paperTilt(-100),6.5);assert.equal(paperTilt(0),0);
 for(const base of [-2,0,2])for(const velocity of [-20,0,20])for(const anchor of [{x:0,y:0},{x:80,y:-60}]){
  const pose=paperPose(300,130,base,paperTilt(velocity),1,anchor),a=(pose.angle-base)*Math.PI/180;
  const gripX=pose.x+pose.scale*(anchor.x*Math.cos(a)-anchor.y*Math.sin(a));
  const gripY=pose.y+pose.scale*(anchor.x*Math.sin(a)+anchor.y*Math.cos(a));
- assert.ok(Math.abs(gripX-300-anchor.x)<1e-9);assert.ok(Math.abs(gripY-130-anchor.y)<1e-9);assert.equal(pose.scale,1.035);
+ assert.ok(Math.abs(gripX-300-anchor.x)<1e-9);assert.ok(Math.abs(gripY-127-anchor.y)<1e-9);assert.equal(pose.scale,1.055);
 }
 assert.deepEqual(paperPose(10,20,2,0,0,{x:80,y:60}),{x:10,y:20,angle:2,scale:1});
 assert.equal(paperVariant('same-id'),paperVariant('same-id'));
-console.log('PASS: tilt bounds/direction, 3.5% lift, exact grip-point compensation, reduced-motion pose, stable paper variations');
+console.log('PASS: tilt bounds/direction, 5.5% scale plus 3px lift, grip-point compensation, reduced-motion pose, stable paper variations');
 
 // Real composer handlers against stable nodes: no drawer/main replacement on submit.
 for(const selector of ['#module-input','#check-new']){
@@ -84,7 +84,7 @@ const checkInput=node('#check-new'),beforeChecks=vm.runInContext('testList.check
 for(let i=0;i<5;i++){checkInput.value='清单 '+i;checkInput.handlers.keydown(enter());assert.equal(checkInput.value,'');assert.equal(ctx.document.activeElement,checkInput);assert.equal(node('.drawer').scrollTop,233);}
 assert.equal(vm.runInContext('testList.checklist.length',ctx),beforeChecks+5);assert.equal(node('#overlay').innerHTML,moduleShell);
 const persisted=JSON.parse(memory.get('personal-desk-v1'));assert.equal(persisted.cards.length,initialCount+5);assert.equal(persisted.cards.find(c=>c.type==='LIST').checklist.length,beforeChecks+5);
-assert.equal(paperTilt(100,'folder'),-2.5);assert.equal(paperPose(0,0,0,0,1,{x:0,y:0},'folder').scale,1.025);
+assert.equal(paperTilt(100,'folder'),-3.5);assert.equal(paperPose(0,0,0,0,1,{x:0,y:0},'folder').scale,1.035);
 ctx.window.matchMedia=()=>({matches:true});
 vm.runInContext("drawer=null;state.cards[2].positions={};startDrag(testDown,testElement,'card')",ctx);events.get('pointermove')(pointer(260,250));events.get('pointerup')(pointer(260,250));assert.equal(style['--x'],'40px');
 console.log('PASS: five folder entries + five checklist entries, stable drawer/input/focus/scroll, IME/229/Shift+Enter/Escape, persisted data, folder weight, reduced-motion dragging');
