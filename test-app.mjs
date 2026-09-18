@@ -22,6 +22,7 @@ console.log('PASS: app startup, desktop/modules render, task archive, project ar
 const events=new Map();let saves=0;
 ctx.document.addEventListener=(name,fn)=>events.set(name,fn);
 ctx.document.removeEventListener=(name)=>events.delete(name);
+ctx.document.createElement=()=>({className:'',style:{},replaceWith(){}});
 ctx.window={scrollX:0,scrollY:0,addEventListener(){},removeEventListener(){}};
 ctx.requestAnimationFrame=()=>1;ctx.cancelAnimationFrame=()=>{};
 ctx.getComputedStyle=()=>({getPropertyValue:()=>''});
@@ -30,7 +31,7 @@ ctx.document.body.append=()=>{};
 const container={scrollLeft:0,scrollTop:0,parentElement:ctx.document.body,dataset:{drop:'zone:thesis'},classList:{add(){},remove(){},contains(){return false;}},closest(){return this;}};
 ctx.document.elementsFromPoint=()=>[container];
 const style={setProperty(k,v){this[k]=v;},getPropertyValue(k){return this[k]||'';}};
-const fake={dataset:{card:'',ghost:'false'},style,parentElement:container,offsetWidth:200,offsetHeight:160,querySelectorAll:()=>[],contains:()=>false,classList:{add(){},remove(){}},setPointerCapture(){},hasPointerCapture:()=>false,getBoundingClientRect:()=>({left:200,top:200,width:200,height:160}),cloneNode:()=>({dataset:{},style:{setProperty(){}},classList:{add(){},remove(){}},setAttribute(){},removeAttribute(){},querySelectorAll:()=>[],remove(){}})};
+const fake={dataset:{card:'',ghost:'false'},style,parentElement:container,offsetWidth:200,offsetHeight:160,querySelectorAll:()=>[],contains:()=>false,before(){},getAttribute:()=>null,setAttribute(){},removeAttribute(){},classList:{add(){},remove(){}},setPointerCapture(){},hasPointerCapture:()=>false,getBoundingClientRect:()=>({left:200,top:200,width:200,height:160}),cloneNode:()=>({dataset:{},style:{setProperty(){}},classList:{add(){},remove(){}},setAttribute(){},removeAttribute(){},querySelectorAll:()=>[],remove(){}})};
 ctx.testElement=fake;
 fake.dataset.card=vm.runInContext("state.cards[2].id",ctx);
 const pointer=(x,y)=>({pointerId:1,button:0,clientX:x,clientY:y,target:{closest:()=>null},stopPropagation(){},preventDefault(){}});

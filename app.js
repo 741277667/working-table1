@@ -1,5 +1,5 @@
-import {bindContinuousInput,installTooltips} from './interactions.mjs?v=8';
-import {paperTilt,paperPose,paperVariant} from './tactile.mjs?v=8';
+import {bindContinuousInput,installTooltips} from './interactions.mjs?v=9';
+import {paperTilt,paperPose,paperVariant} from './tactile.mjs?v=9';
 import {migrate,validState as validate,archiveCard,restoreCard,projectAction,visibleCard} from './model.mjs';
 const $=(s,p=document)=>p.querySelector(s), $$=(s,p=document)=>[...p.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -118,23 +118,25 @@ function startDrag(e,el,kind){
   const pressTransform=getComputedStyle(el).transform;
   el.classList.add('paper-pressed');
   const press=reduced?null:el.animate?.([{transform:pressTransform},{transform:pressTransform+' scale(.995)'}],{duration:80,fill:'forwards',easing:'ease-out'});
-  let x=startX,y=startY,active=false,clone=null,frame=0,target=null,rect,width,height,sourceScroll,baseLeft,baseTop,deltaX=0,deltaY=0;
+  let x=startX,y=startY,active=false,clone=null,placeholder=null,frame=0,target=null,rect,width,height,sourceScroll,baseLeft,baseTop,deltaX=0,deltaY=0,sourceStyle='',sourceAria=null,sourceContainer=null;
   const scrollSum=()=>{let totalX=window.scrollX,totalY=window.scrollY;for(let n=el.parentElement;n&&n!==document.body;n=n.parentElement){totalX+=n.scrollLeft;totalY+=n.scrollTop;}return {x:totalX,y:totalY};};
   const rotation=kind==='card'?Number(c.visual_dna.rotation)||0:0;
   function begin(){
     press?.cancel();el.classList.remove('paper-pressed');hideTooltip();
     el.getAnimations?.().forEach(a=>a.cancel());active=true;drag=id;pickedAt=performance.now();lastFrame=pickedAt;rect=el.getBoundingClientRect();width=el.offsetWidth;height=el.offsetHeight;sourceScroll=scrollSum();
+    sourceContainer=kind==='card'?el.parentElement.closest('[data-drop]'):null;sourceStyle=el.style.cssText;sourceAria=el.getAttribute?.('aria-hidden')??null;
     anchor={x:startX-(rect.left+rect.width/2),y:startY-(rect.top+rect.height/2)};
     baseLeft=rect.left+rect.width/2-el.offsetWidth/2;baseTop=rect.top+rect.height/2-el.offsetHeight/2;
-    clone=el.cloneNode(true);
-    // Freeze inherited dimensions and typography once, before the pointer loop.
-    const originals=[el,...el.querySelectorAll('*')],copies=[clone,...clone.querySelectorAll('*')];
+    // The held sheet itself is the proxy. A same-size spacer preserves its place on the desk.
+    placeholder=document.createElement('div');placeholder.className='drag-placeholder';Object.assign(placeholder.style,{width:width+'px',height:height+'px',flex:`0 0 ${width}px`,margin:getComputedStyle(el).margin});el.before(placeholder);clone=el;
+    // Freeze inherited dimensions and typography once, before moving the real sheet to the desk surface.
+    const originals=[el,...el.querySelectorAll('*')];
     const frozenProperties=['box-sizing','width','height','min-width','min-height','max-width','max-height','padding','margin','border','border-radius','background','color','font','letter-spacing','line-height','display','gap','flex','align-items','justify-content','white-space','transform','transform-origin','position','top','right','bottom','left','box-shadow'];
-    originals.forEach((node,i)=>{const cs=getComputedStyle(node);for(const name of frozenProperties)copies[i].style.setProperty(name,cs.getPropertyValue(name));copies[i].removeAttribute('id');copies[i].style.pointerEvents='none';});
-    clone.classList.remove('paper-settling','paper-pressed');clone.inert=true;clone.classList.add('drag-proxy');clone.setAttribute('aria-hidden','true');clone.dataset.weight=weight;
+    originals.forEach(node=>{const cs=getComputedStyle(node);for(const name of frozenProperties)node.style.setProperty(name,cs.getPropertyValue(name));node.style.pointerEvents='none';});
+    clone.classList.remove('paper-settling','paper-pressed');clone.classList.add('drag-proxy');clone.setAttribute('aria-hidden','true');clone.dataset.weight=weight;
     Object.assign(clone.style,{position:'fixed',left:baseLeft+'px',top:baseTop+'px',margin:'0',width:el.offsetWidth+'px',height:el.offsetHeight+'px',transformOrigin:'50% 50%',translate:'none',scale:'none',transition:'none',animation:'none',zIndex:'1000',pointerEvents:'none',transform:`translate3d(0,0,0) rotate(${rotation}deg)`});
     clone.style.setProperty('width',width+'px','important');clone.style.setProperty('height',height+'px','important');
-    document.body.append(clone);el.classList.add('drag-placeholder');document.body.classList.add('dragging');
+    document.body.append(clone);document.body.classList.add('dragging');
     el.setPointerCapture(e.pointerId);
     if(kind==='card')$$('[data-drop]').filter(n=>!el.contains(n)).forEach(n=>n.classList.add('drop-ready'));
   }
@@ -170,7 +172,7 @@ function startDrag(e,el,kind){
   }
   function cleanup(){
     pendingPointer=null;press?.cancel();el.classList.remove('paper-pressed');
-    cancelAnimationFrame(frame);clone?.remove();el.classList.remove('drag-placeholder');document.body.classList.remove('dragging');
+    cancelAnimationFrame(frame);if(placeholder){placeholder.replaceWith?.(el);placeholder=null;}el.style.cssText=sourceStyle;if(sourceAria===null)el.removeAttribute?.('aria-hidden');else el.setAttribute?.('aria-hidden',sourceAria);delete el.dataset.weight;clone=null;document.body.classList.remove('dragging');
     $$('.drop-ready,.drop-hover').forEach(n=>n.classList.remove('drop-ready','drop-hover'));
     document.removeEventListener('pointermove',onMove);document.removeEventListener('pointerup',onUp);document.removeEventListener('pointercancel',cancel);document.removeEventListener('keydown',onKey);window.removeEventListener('blur',cancel);
     if(el.hasPointerCapture(e.pointerId))el.releasePointerCapture(e.pointerId);
@@ -186,14 +188,13 @@ function startDrag(e,el,kind){
     const scroll=scrollSum(),dx=x-startX+scroll.x-sourceScroll.x,dy=y-startY+scroll.y-sourceScroll.y;
     const destination=target?.dataset.drop;
     
-    const sourceContainer=kind==='card'?el.parentElement.closest('[data-drop]'):null;
     const transfer=kind==='card'&&destination&&target!==sourceContainer;
     if(transfer){
-      const receiver=target,held=clone,receiverID=target.dataset.layout;
+      const receiver=target,held=clone.cloneNode(true),receiverID=target.dataset.layout;
       const r=receiver.getBoundingClientRect();
       const centerX=baseLeft+width/2+lastPose.x,centerY=baseTop+height/2+lastPose.y;
       // Commit immediately; the expendable proxy alone finishes the receiving gesture.
-      clone=null;cleanup();move(c,destination);refresh();
+      held.removeAttribute('id');held.setAttribute('aria-hidden','true');held.style.pointerEvents='none';document.body.append(held);cleanup();move(c,destination);refresh();
       if(!reduced&&held.animate){
         const from=held.style.transform;
         held.animate([{transform:from,opacity:1},{transform:`translate3d(${lastPose.x+(r.left+r.width/2-centerX)*.35}px,${lastPose.y+(r.top+r.height/2-centerY)*.35}px,0) rotate(${rotation}deg) scale(.85)`,opacity:0}],{duration:150,easing:'ease-in',fill:'forwards'}).finished.catch(()=>{}).finally(()=>held.remove());
@@ -207,8 +208,7 @@ function startDrag(e,el,kind){
     if(documentLeft<35)position.x+=35-documentLeft;
     if(documentTop<100)position.y+=100-documentTop;
     if(c){c.positions[key]=position;c.stack_id=null;change(c,'移动纸片');}else{position.z=Math.max(1,...Object.values(state.layouts).map(l=>Number(l.z)||1))+1;state.layouts[key]=position;save();}
-    el.style.setProperty('--x',position.x+'px');el.style.setProperty('--y',position.y+'px');if(!c)el.style.zIndex=position.z;
-    cleanup();settlePaper(el,lastPose,rotation,weight);
+    cleanup();el.style.setProperty('--x',position.x+'px');el.style.setProperty('--y',position.y+'px');if(!c)el.style.zIndex=position.z;settlePaper(el,lastPose,rotation,weight);
   }
   document.addEventListener('pointermove',onMove,{passive:false});document.addEventListener('pointerup',onUp);document.addEventListener('pointercancel',cancel);document.addEventListener('keydown',onKey);window.addEventListener('blur',cancel);
 }
