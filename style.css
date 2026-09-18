@@ -62,3 +62,23 @@ body:before{display:none}body{font-weight:400;font-synthesis:none}
 .completing:before{z-index:9;opacity:1;background-image:none}
 @media(max-width:700px){.zone-title{font-size:29px!important}.card h3,.zone .card h3{font-size:20px}.card .summary,.zone .card .summary{font-size:17px}.date{font-size:11px}.drawer-heading h2{font-size:30px}}
 @media(prefers-reduced-motion:reduce){.card,.module,.zone,.module:before{transition:none!important}.card:hover{translate:none!important}.drop-hover>.zone-top .zone-title,.drop-hover>header h2{translate:none}.drag-proxy{will-change:auto}}
+
+/* v4: weight belongs to loose paper, never to the editing surface. */
+.paper-pressed{cursor:grabbing!important;box-shadow:0 1px 1px #4b3b2920!important}
+.drag-proxy{box-shadow:var(--drag-shadow,1px 9px 11px #4b3b2938)!important}
+.drag-proxy[data-weight='folder']:before{transform:rotate(var(--tab-tilt,0deg));transform-origin:20% 100%;transition:none}
+.zone.drop-hover,.module.drop-hover{translate:0 -3px;transition:translate 130ms ease-out,box-shadow 130ms ease-out}
+.module.drop-hover:before{transform:rotate(-2deg);transform-origin:0 100%}
+button:active:not(.zone-title):not(.module-title){translate:0 1px}
+#paper-tooltip{position:fixed;z-index:1200;pointer-events:none;background:#fbf3dd;color:#705d4a;border:1px solid #b2a18a;padding:6px 9px;box-shadow:1px 2px 2px #4b3b2924;font:13px/1.4 Arial,'PingFang SC',sans-serif;max-width:calc(100vw - 24px);overflow-wrap:anywhere;transform:rotate(-.5deg)}
+#paper-tooltip[hidden]{display:none}
+.module-drawer{display:flex;flex-direction:column;overflow:hidden}
+.module-drawer .drawer-heading{flex:none}
+.module-drawer #drawer-body{min-height:0;flex:1;display:flex;flex-direction:column}
+.module-drawer .tray-section{min-height:0;flex:1;overflow:auto;margin:0;padding:8px}
+.module-drawer .cards{display:flex;flex-wrap:wrap;gap:24px}
+.inline-composer{flex:none;display:flex;gap:10px;align-items:center;padding:14px 0 0;border-top:1px solid var(--line);background:inherit}
+.inline-composer textarea{flex:1;min-width:0;resize:vertical;max-height:110px;font:18px/1.5 var(--body-font);padding:10px;background:#fff8e580;border:1px solid #b2a18a70}
+.inline-composer button{flex:none}
+.detail,.drawer{animation-duration:180ms}
+@media(prefers-reduced-motion:reduce){.zone.drop-hover,.module.drop-hover{translate:none}.module.drop-hover:before{transform:none}button:active{translate:none!important}.paper-pressed{box-shadow:var(--paper-contact)!important}}
