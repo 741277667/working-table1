@@ -1,3 +1,4 @@
+import {paperTilt,paperPose,paperVariant} from './tactile.mjs';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -6,8 +7,8 @@ import {migrate,validState as validate,archiveCard,restoreCard,projectAction,vis
 // Minimal DOM adapter exercises application startup and renders; not a browser test.
 const nodes=new Map(),memory=new Map();
 function node(selector){if(!nodes.has(selector))nodes.set(selector,{innerHTML:'',textContent:'',style:{},dataset:{},children:[],classList:{add(){},remove(){},toggle(){}},setAttribute(){},getAttribute(){return ''},focus(){},select(){},querySelector:s=>node(s),querySelectorAll:()=>[],addEventListener(){}});return nodes.get(selector);}
-const ctx=vm.createContext({console,crypto:webcrypto,structuredClone,migrate,validate,archiveCard,restoreCard,projectAction,visibleCard,URL,Date,Math,innerWidth:1440,localStorage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v)},document:{querySelector:s=>node(s),querySelectorAll:()=>[],body:node('body'),addEventListener(){}},MutationObserver:class{observe(){}},queueMicrotask:fn=>fn(),setTimeout:()=>0,clearTimeout(){},performance:{now:()=>0}});
-vm.runInContext(fs.readFileSync('app.js','utf8').replace(/^import .*\n/,''),ctx);
+const ctx=vm.createContext({paperTilt,paperPose,paperVariant,console,crypto:webcrypto,structuredClone,migrate,validate,archiveCard,restoreCard,projectAction,visibleCard,URL,Date,Math,innerWidth:1440,localStorage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v)},document:{querySelector:s=>node(s),querySelectorAll:()=>[],body:node('body'),addEventListener(){}},MutationObserver:class{observe(){}},queueMicrotask:fn=>fn(),setTimeout:()=>0,clearTimeout(){},performance:{now:()=>0}});
+vm.runInContext(fs.readFileSync('app.js','utf8').replace(/^import .*\n/gm,''),ctx);
 assert.match(node('#main').innerHTML,/我的桌面/);
 assert.doesNotMatch(node('#main').innerHTML,/布置桌面|drag-destinations/);
 vm.runInContext("view='thesis';render()",ctx);assert.match(node('#main').innerHTML,/当前研究/);
@@ -27,8 +28,8 @@ ctx.localStorage.setItem=(k,v)=>{saves++;memory.set(k,v);};
 ctx.document.body.append=()=>{};
 const container={scrollLeft:0,scrollTop:0,parentElement:ctx.document.body,dataset:{drop:'zone:thesis'},classList:{add(){},remove(){},contains(){return false;}},closest(){return this;}};
 ctx.document.elementsFromPoint=()=>[container];
-const style={setProperty(k,v){this[k]=v;}};
-const fake={dataset:{card:'',ghost:'false'},style,parentElement:container,offsetWidth:200,offsetHeight:160,querySelectorAll:()=>[],contains:()=>false,classList:{add(){},remove(){}},setPointerCapture(){},hasPointerCapture:()=>false,getBoundingClientRect:()=>({left:200,top:200,width:200,height:160}),cloneNode:()=>({style:{setProperty(){}},classList:{add(){}},setAttribute(){},removeAttribute(){},querySelectorAll:()=>[],remove(){}})};
+const style={setProperty(k,v){this[k]=v;},getPropertyValue(k){return this[k]||'';}};
+const fake={dataset:{card:'',ghost:'false'},style,parentElement:container,offsetWidth:200,offsetHeight:160,querySelectorAll:()=>[],contains:()=>false,classList:{add(){},remove(){}},setPointerCapture(){},hasPointerCapture:()=>false,getBoundingClientRect:()=>({left:200,top:200,width:200,height:160}),cloneNode:()=>({style:{setProperty(){}},classList:{add(){},remove(){}},setAttribute(){},removeAttribute(){},querySelectorAll:()=>[],remove(){}})};
 ctx.testElement=fake;
 fake.dataset.card=vm.runInContext("state.cards[2].id",ctx);
 const pointer=(x,y)=>({pointerId:1,button:0,clientX:x,clientY:y,target:{closest:()=>null},stopPropagation(){},preventDefault(){}});
@@ -45,3 +46,14 @@ assert.equal(JSON.parse(memory.get('personal-desk-v1')).cards[2].positions.desk.
 vm.runInContext("startDrag(testDown,testElement,'card')",ctx);events.get('pointermove')(pointer(580,390));events.get('pointercancel')();assert.equal(saves,before+1,'cancel retains saved position');
 vm.runInContext("state.cards[2].positions={};startDrag(testDown,testElement,'card')",ctx);events.get('pointermove')(pointer(260,250));ctx.window.scrollY=100;events.get('pointerup')(pointer(260,250));assert.equal(style['--y'],'130px','window scroll is included exactly once');
 console.log('PASS: drag threshold, no writes during motion, 300px movement without snapback, persisted coordinates, pointer cancellation, scroll compensation');
+
+assert.equal(paperTilt(100),-2.2);assert.equal(paperTilt(-100),2.2);assert.equal(paperTilt(0),0);
+for(const base of [-2,0,2])for(const velocity of [-20,0,20])for(const anchor of [{x:0,y:0},{x:80,y:-60}]){
+ const pose=paperPose(300,130,base,paperTilt(velocity),1,anchor),a=(pose.angle-base)*Math.PI/180;
+ const gripX=pose.x+pose.scale*(anchor.x*Math.cos(a)-anchor.y*Math.sin(a));
+ const gripY=pose.y+pose.scale*(anchor.x*Math.sin(a)+anchor.y*Math.cos(a));
+ assert.ok(Math.abs(gripX-300-anchor.x)<1e-9);assert.ok(Math.abs(gripY-130-anchor.y)<1e-9);assert.equal(pose.scale,1.015);
+}
+assert.deepEqual(paperPose(10,20,2,0,0,{x:80,y:60}),{x:10,y:20,angle:2,scale:1});
+assert.equal(paperVariant('same-id'),paperVariant('same-id'));
+console.log('PASS: tilt bounds/direction, 1.5% lift, exact grip-point compensation, reduced-motion pose, stable paper variations');

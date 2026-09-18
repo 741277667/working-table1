@@ -1,3 +1,4 @@
+import {paperTilt,paperPose,paperVariant} from './tactile.mjs';
 import {migrate,validState as validate,archiveCard,restoreCard,projectAction,visibleCard} from './model.mjs';
 const $=(s,p=document)=>p.querySelector(s), $$=(s,p=document)=>[...p.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -5,7 +6,7 @@ const families=['cream-index','white-grid','soft-blue','warm-yellow','grey-archi
 const familyNames=['奶油索引','白色方格','浅蓝便笺','暖黄纸条','灰色档案','玫瑰明信片','绿色账页','素色信纸'];
 const defaultZones=[{id:'media',name:'自媒体',en:'THE EDITORIAL',modules:['灵感纸篓','选题库','当前制作','素材文件格','待办便签','已发布 / 复盘']},{id:'thesis',name:'毕业设计',en:'RESEARCH STUDIO',modules:['当前研究','问题纸堆','灵感碎纸','研究地图','尝试记录','资料文件格','今日足迹','SAVE 存档','成果文件架']},{id:'freelance',name:'兼职',en:'SIDE PROJECTS',modules:['IN · 新任务','WORKING · 制作中','DELIVERED · 已交付','PAID · 已结算']},{id:'work',name:'工作',en:'WHAT’S NEXT',modules:['实习 · 短期任务','实习 · 长线项目','实习 · 等待','实习 · 已完成','校招 · WANT','校招 · APPLIED','校招 · PROCESS','校招 · WAITING','校招 · CLOSED']},{id:'life',name:'生活',en:'LITTLE THINGS',modules:['日常小事','购物清单','想买','最近想做']}];
 const uid=()=>crypto.randomUUID(); const now=()=>new Date().toISOString();
-function make(title,area,module,type='NOTE',family='cream-index',summary=''){return {id:uid(),title,summary,type,home_area:area,home_module:module,surface:area?'home':'inbox',lane:'TODAY',status:'ACTIVE',deadline:'',start_date:'',notes:'',checklist:[],attachments:[],links:[],tags:[],relations:[],history:[{at:now(),text:'创建卡片'}],created_at:now(),updated_at:now(),visual_dna:{family,rotation:(Math.random()-.5)*5},positions:{},stack_id:null};}
+function make(title,area,module,type='NOTE',family='cream-index',summary=''){return {id:uid(),title,summary,type,home_area:area,home_module:module,surface:area?'home':'inbox',lane:'TODAY',status:'ACTIVE',deadline:'',start_date:'',notes:'',checklist:[],attachments:[],links:[],tags:[],relations:[],history:[{at:now(),text:'创建卡片'}],created_at:now(),updated_at:now(),visual_dna:{family,rotation:(Math.random()-.5)*4},positions:{},stack_id:null};}
 const seeds=[make('让灵感先发生','media','灵感纸篓','NOTE','warm-yellow','把生活里的小发现\n攒成下一次表达。'),make('九月的创作计划','media','当前制作','PROJECT','plain-letter','一篇图文，一次新的尝试。'),make('修改开题报告','thesis','当前研究','TASK','cream-index','重新梳理研究目的，\n让问题更清晰一点。'),make('视觉语法的边界','thesis','问题纸堆','NOTE','white-grid','离散单元，如何形成语言？'),make('收集一点蓝色','thesis','灵感碎纸','SAVE','soft-blue','色彩 · 结构 · 节奏'),make('本周设计交付','freelance','WORKING · 制作中','TASK','plain-letter','检查版式与导出文件。'),make('整理作品集','work','实习 · 长线项目','PROJECT','rose-postcard','选出最能代表自己的三个项目。'),make('下一站，去哪里？','work','校招 · WANT','NOTE','cream-index','记录想了解的岗位。'),make('把日子过得具体一点','life','购物清单','LIST','warm-yellow','鲜花、咖啡，还有好好吃饭。'),make('想研究 AI × 设计岗位',null,null,'NOTE','soft-blue','先记下来，慢慢整理。')];seeds[8].checklist=[{id:uid(),text:'买一束鲜花',done:false},{id:uid(),text:'补充咖啡豆',done:true},{id:uid(),text:'去公园散步',done:false}];
 const KEY='personal-desk-v1';let state={version:1,cards:seeds,modules:Object.fromEntries(defaultZones.map(z=>[z.id,z.modules])),layouts:{},zoneOrder:defaultZones.map(z=>z.id)},storageError=false;
 state=migrate(state,defaultZones);
@@ -22,7 +23,7 @@ function save(){if(loadBlocked){toast('旧数据读取失败，已保护原内�
 function change(c,text){c.updated_at=now();c.history.push({at:now(),text});save();}
 function toast(msg,undo=false){clearTimeout(toastTimer);$('#toast').innerHTML=esc(msg)+(undo?' <button id="undo">撤销</button>':'');$('#toast').style.display='block';$('#undo')?.addEventListener('click',()=>{state=undoSnapshot;save();closeOverlay();render();toast('已撤销');});toastTimer=setTimeout(()=>$('#toast').style.display='none',6500);}
 function snapshot(){undoSnapshot=structuredClone(state);}
-function cardHTML(c,ghost=false){const p=c.positions[positionKey()]||{x:0,y:0};let siblings=c.stack_id?state.cards.filter(x=>x.stack_id===c.stack_id&&x.surface===c.surface):[];const hidden=siblings.length>1&&siblings[0].id!==c.id&&!expandedStacks.has(c.stack_id);return `<article class="card ${c.visual_dna.family} ${ghost?'ghost':''} ${hidden?'stack-hidden':''}" data-card="${c.id}" data-ghost="${ghost}" tabindex="0" role="button" aria-label="打开 ${esc(c.title)}" style="--r:${Number(c.visual_dna.rotation)||0}deg;--x:${Number(p.x)||0}px;--y:${Number(p.y)||0}px"><div class="card-type">${esc(c.type)}<button class="complete" data-complete="${c.id}" aria-label="${c.surface==='archive'?'恢复':'完成并归档'} ${esc(c.title)}">${c.surface==='archive'?'↶':'✓'}</button></div><h3>${esc(c.title)}</h3><div class="summary">${esc(c.summary)}</div>${c.type==='LIST'?c.checklist.slice(0,3).map(i=>`<div class="check-row">${i.done?'☑':'□'} ${esc(i.text)}</div>`).join(''):''}${c.deadline?`<div class="stamp">${esc(c.deadline)}</div>`:''}${ghost?`<div class="stamp">→ currently ${esc(c.surface.toUpperCase())}</div>`:c.status!=='ACTIVE'?`<div class="stamp">${esc(c.status)}</div>`:''}${siblings.length>1?`<button class="stack-label" data-stack="${c.stack_id}">${siblings.length} 张纸 · ${expandedStacks.has(c.stack_id)?'收拢':'展开'}</button>`:''}${drawer==='archive'?`<div class="archive-meta">${esc(zones().find(z=>z.id===c.home_area)?.name||'未分类')}<br>${c.completed_at?'完成 '+formatDate(c.completed_at):c.status==='DONE'?'完成时间未记录':c.surface==='archive'?'已归档':'随项目归档'}</div>`:''}</article>`;}
+function cardHTML(c,ghost=false){const p=c.positions[positionKey()]||{x:0,y:0};let siblings=c.stack_id?state.cards.filter(x=>x.stack_id===c.stack_id&&x.surface===c.surface):[];const hidden=siblings.length>1&&siblings[0].id!==c.id&&!expandedStacks.has(c.stack_id);return `<article class="card ${c.visual_dna.family} ${ghost?'ghost':''} ${hidden?'stack-hidden':''}" data-paper-variant="${paperVariant(c.id)}" data-card="${c.id}" data-ghost="${ghost}" tabindex="0" role="button" aria-label="打开 ${esc(c.title)}" style="--r:${Number(c.visual_dna.rotation)||0}deg;--x:${Number(p.x)||0}px;--y:${Number(p.y)||0}px"><div class="card-type">${esc(c.type)}<button class="complete" data-complete="${c.id}" aria-label="${c.surface==='archive'?'恢复':'完成并归档'} ${esc(c.title)}">${c.surface==='archive'?'↶':'✓'}</button></div><h3>${esc(c.title)}</h3><div class="summary">${esc(c.summary)}</div>${c.type==='LIST'?c.checklist.slice(0,3).map(i=>`<div class="check-row">${i.done?'☑':'□'} ${esc(i.text)}</div>`).join(''):''}${c.deadline?`<div class="stamp">${esc(c.deadline)}</div>`:''}${ghost?`<div class="stamp">→ currently ${esc(c.surface.toUpperCase())}</div>`:c.status!=='ACTIVE'?`<div class="stamp">${esc(c.status)}</div>`:''}${siblings.length>1?`<button class="stack-label" data-stack="${c.stack_id}">${siblings.length} 张纸 · ${expandedStacks.has(c.stack_id)?'收拢':'展开'}</button>`:''}${drawer==='archive'?`<div class="archive-meta">${esc(zones().find(z=>z.id===c.home_area)?.name||'未分类')}<br>${c.completed_at?'完成 '+formatDate(c.completed_at):c.status==='DONE'?'完成时间未记录':c.surface==='archive'?'已归档':'随项目归档'}</div>`:''}</article>`;}
 function positionKey(){return (drawer==='module'?'module:'+view+':'+openModuleName:drawer||view||'desk')+(innerWidth<701?':mobile':'');}
 function formatDate(v){return v?new Date(v).toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'未记录';}
 function layoutID(id){return id+(innerWidth<701?':mobile':'');}
@@ -92,18 +93,21 @@ function startDrag(e,el,kind){
   const key=kind==='card'?positionKey():layoutID(id);
   const previous=structuredClone((c?c.positions[key]:state.layouts[key])||{x:0,y:0});
   const startX=e.clientX,startY=e.clientY;
+  let lastInput=performance.now(),lastPointerX=startX,velocityTilt=0,currentTilt=0,lastFrame=0,pickedAt=0,anchor={x:0,y:0},lastPose=null;
+  const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
   let x=startX,y=startY,active=false,clone=null,frame=0,target=null,rect,width,height,sourceScroll,baseLeft,baseTop,deltaX=0,deltaY=0;
   const scrollSum=()=>{let totalX=window.scrollX,totalY=window.scrollY;for(let n=el.parentElement;n&&n!==document.body;n=n.parentElement){totalX+=n.scrollLeft;totalY+=n.scrollTop;}return {x:totalX,y:totalY};};
   const rotation=kind==='card'?Number(c.visual_dna.rotation)||0:0;
   function begin(){
-    active=true;drag=id;rect=el.getBoundingClientRect();width=el.offsetWidth;height=el.offsetHeight;sourceScroll=scrollSum();
+    el.getAnimations?.().forEach(a=>a.cancel());active=true;drag=id;pickedAt=performance.now();lastFrame=pickedAt;rect=el.getBoundingClientRect();width=el.offsetWidth;height=el.offsetHeight;sourceScroll=scrollSum();
+    anchor={x:startX-(rect.left+rect.width/2),y:startY-(rect.top+rect.height/2)};
     baseLeft=rect.left+rect.width/2-el.offsetWidth/2;baseTop=rect.top+rect.height/2-el.offsetHeight/2;
     clone=el.cloneNode(true);
     // Freeze inherited dimensions and typography once, before the pointer loop.
     const originals=[el,...el.querySelectorAll('*')],copies=[clone,...clone.querySelectorAll('*')];
     const frozenProperties=['box-sizing','width','height','min-width','min-height','max-width','max-height','padding','margin','border','border-radius','background','color','font','letter-spacing','line-height','display','gap','flex','align-items','justify-content','white-space','transform','transform-origin','position','top','right','bottom','left','box-shadow'];
     originals.forEach((node,i)=>{const cs=getComputedStyle(node);for(const name of frozenProperties)copies[i].style.setProperty(name,cs.getPropertyValue(name));copies[i].removeAttribute('id');copies[i].style.pointerEvents='none';});
-    clone.classList.add('drag-proxy');clone.setAttribute('aria-hidden','true');
+    clone.classList.remove('paper-settling');clone.classList.add('drag-proxy');clone.setAttribute('aria-hidden','true');
     Object.assign(clone.style,{position:'fixed',left:baseLeft+'px',top:baseTop+'px',margin:'0',width:el.offsetWidth+'px',height:el.offsetHeight+'px',transformOrigin:'50% 50%',translate:'none',scale:'none',transition:'none',animation:'none',zIndex:'1000',pointerEvents:'none',transform:`translate3d(0,0,0) rotate(${rotation}deg)`});
     clone.style.setProperty('width',width+'px','important');clone.style.setProperty('height',height+'px','important');
     document.body.append(clone);el.classList.add('drag-placeholder');document.body.classList.add('dragging');
@@ -120,12 +124,19 @@ function startDrag(e,el,kind){
   }
   function paint(){
     frame=0;if(!active)return;
+    const t=performance.now(),dt=Math.min(40,Math.max(1,t-lastFrame));lastFrame=t;
+    const age=Math.max(0,t-pickedAt),lift=reduced?0:1-Math.pow(1-Math.min(1,age/140),3);
+    const desired=reduced?0:velocityTilt*Math.exp(-Math.max(0,t-lastInput)/75);
+    currentTilt+=(desired-currentTilt)*(1-Math.exp(-dt/45));
     deltaX=x-startX;deltaY=y-startY;
-    clone.style.transform=`translate3d(${deltaX}px,${deltaY}px,0) rotate(${rotation}deg)`;
+    lastPose=paperPose(deltaX,deltaY,rotation,currentTilt,lift,anchor);
+    clone.style.transform=`translate3d(${lastPose.x}px,${lastPose.y}px,0) rotate(${lastPose.angle}deg) scale(${lastPose.scale})`;
+
     const next=findTarget();if(next!==target){target?.classList.remove('drop-hover');target=next;target?.classList.add('drop-hover');}
+    if(!reduced&&(age<140||Math.abs(currentTilt)>.015||Math.abs(desired)>.015))frame=requestAnimationFrame(paint);
   }
   function onMove(ev){
-    if(ev.pointerId!==e.pointerId)return;x=ev.clientX;y=ev.clientY;
+    if(ev.pointerId!==e.pointerId)return;const t=performance.now();velocityTilt=paperTilt((ev.clientX-lastPointerX)/Math.max(8,t-lastInput));lastPointerX=ev.clientX;lastInput=t;x=ev.clientX;y=ev.clientY;
     if(!active&&Math.hypot(x-startX,y-startY)>=6)begin();
     if(active){ev.preventDefault();if(!frame)frame=requestAnimationFrame(paint);}
   }
@@ -141,21 +152,24 @@ function startDrag(e,el,kind){
   function onUp(ev){
     if(ev.pointerId!==e.pointerId)return;
     if(!active){cleanup();return;}
-    x=ev.clientX;y=ev.clientY;paint();
+    x=ev.clientX;y=ev.clientY;cancelAnimationFrame(frame);paint();
     const scroll=scrollSum(),dx=x-startX+scroll.x-sourceScroll.x,dy=y-startY+scroll.y-sourceScroll.y;
     const destination=target?.dataset.drop;
     
     const sourceContainer=kind==='card'?el.parentElement.closest('[data-drop]'):null;
     const transfer=kind==='card'&&destination&&target!==sourceContainer;
     if(transfer){
-      const finalLeft=baseLeft+deltaX,finalTop=baseTop+deltaY;
+      const finalLeft=baseLeft+deltaX,finalTop=baseTop+deltaY;const targetID=target?.dataset.layout;
+      const held=lastPose;
       cleanup();move(c,destination);
       // Put the received paper on top of the destination's visible preview.
       state.cards=state.cards.filter(item=>item.id!==c.id);state.cards.unshift(c);
       refresh();
       const received=$(`[data-card="${c.id}"][data-ghost="false"]`);
       if(received){const r=received.getBoundingClientRect();const centerX=finalLeft+width/2,centerY=finalTop+height/2;c.positions[positionKey()]={x:centerX-(r.left+r.width/2),y:centerY-(r.top+r.height/2)};received.style.setProperty('--x',c.positions[positionKey()].x+'px');received.style.setProperty('--y',c.positions[positionKey()].y+'px');}
-      save();return;
+      save();settlePaper(received,held,c.visual_dna.rotation);
+      const receiver=targetID?$$('[data-layout]').find(n=>n.dataset.layout===targetID):null;
+      receivePaper(receiver);return;
     }
     snapshot();const position={...previous,x:(previous.x||0)+dx,y:(previous.y||0)+dy};
     // Keep a reachable top/left edge; there is no arbitrary displacement cap.
@@ -164,7 +178,7 @@ function startDrag(e,el,kind){
     if(documentTop<100)position.y+=100-documentTop;
     if(c){c.positions[key]=position;c.stack_id=null;change(c,'移动纸片');}else{position.z=Math.max(1,...Object.values(state.layouts).map(l=>Number(l.z)||1))+1;state.layouts[key]=position;save();}
     el.style.setProperty('--x',position.x+'px');el.style.setProperty('--y',position.y+'px');if(!c)el.style.zIndex=position.z;
-    cleanup();
+    cleanup();settlePaper(el,lastPose,rotation);
   }
   document.addEventListener('pointermove',onMove,{passive:false});document.addEventListener('pointerup',onUp);document.addEventListener('pointercancel',cancel);document.addEventListener('keydown',onKey);window.addEventListener('blur',cancel);
 }
@@ -212,4 +226,17 @@ function openModule(name){
   shell(name,zones().find(z=>z.id===view)?.name||'');
   $('#drawer-body').innerHTML=`<section class="tray-section" data-drop="module:${esc(name)}"><div class="cards">${state.cards.filter(c=>c.home_area===view&&c.home_module===name&&!['archive','trash'].includes(c.surface)).map(c=>cardHTML(c,c.surface!=='home')).join('')||'<div class="empty">暂无纸片</div>'}</div><button id="module-new" class="icon-button" title="新建纸条" aria-label="新建纸条">＋</button></section>`;
   $('#module-new').onclick=()=>newPaper(view,name);bindCards($('#drawer-body'));
+}
+
+function settlePaper(el,held,rotation=0){
+  if(!el||!held||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
+  const x=parseFloat(el.style.getPropertyValue('--x'))||0,y=parseFloat(el.style.getPropertyValue('--y'))||0;
+  el.animate?.([
+    {transform:`translate3d(${x}px,${y}px,0) rotate(${held.angle}deg) scale(${held.scale})`,boxShadow:'1px 3px 5px #51432e30'},
+    {transform:`translate3d(${x}px,${y}px,0) rotate(${rotation}deg) scale(1)`,boxShadow:'0 1px 1px #51432e28'}
+  ],{duration:165,easing:'cubic-bezier(.2,.7,.3,1)'});
+}
+function receivePaper(el){
+  if(!el||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
+  el.animate?.([{boxShadow:'inset 0 -3px 0 #86704d30,0 2px 3px #51432e35'},{boxShadow:'inset 0 -1px 0 #86704d20,0 1px 2px #51432e25'}],{duration:180,easing:'ease-out'});
 }
