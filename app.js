@@ -1,5 +1,5 @@
-import {bindContinuousInput,installTooltips} from './interactions.mjs?v=5';
-import {paperTilt,paperPose,paperVariant} from './tactile.mjs?v=5';
+import {bindContinuousInput,installTooltips} from './interactions.mjs?v=6';
+import {paperTilt,paperPose,paperVariant} from './tactile.mjs?v=6';
 import {migrate,validState as validate,archiveCard,restoreCard,projectAction,visibleCard} from './model.mjs';
 const $=(s,p=document)=>p.querySelector(s), $$=(s,p=document)=>[...p.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -78,12 +78,18 @@ function newPaper(area=null,module=null){closeOverlay();lastFocus=document.activ
 function move(c,target,module){snapshot();if(c.surface==='archive'&&target!=='archive')restoreCard(state,c);c.stack_id=null;c.positions={};if(target.startsWith('zone:')){c.home_area=target.slice(5);if(!state.modules[c.home_area].length)state.modules[c.home_area].push('纸片');c.home_module=module||state.modules[c.home_area][0];c.surface='home';c.status=c.status==='WAITING'?'ACTIVE':c.status;}else if(target.startsWith('module:')){c.home_area=view;c.home_module=target.slice(7);c.surface='home';}else if(target.startsWith('lane:')){c.surface='today';c.lane=target.slice(5);if(c.lane==='WAITING')c.status='WAITING';}else if(target==='archive')archiveCard(c,false);else {c.surface=target;if(target==='today')c.lane='TODAY';}change(c,'移动到 '+(module||target));toast('已放好',true);}
 let suppressClickUntil=0,pendingPointer=null;
 window.DESK_DEBUG??=new URLSearchParams(location.search).has('desk_debug');
-function dragDebug(values={}){
+let debugTrace={minTilt:Infinity,maxTilt:-Infinity,maxScale:1,transform:'none',shadow:'none'};
+function dragDebug(values={},reset=false){
   let panel=$('#drag-debug');
   if(!window.DESK_DEBUG){panel?.remove?.();return;}
   if(!panel){panel=document.createElement('pre');panel.id='drag-debug';document.body.append(panel);}
+  if(reset)debugTrace={minTilt:Infinity,maxTilt:-Infinity,maxScale:1,transform:'none',shadow:'none'};
+  if(Number.isFinite(values.visualTilt)){debugTrace.minTilt=Math.min(debugTrace.minTilt,values.visualTilt);debugTrace.maxTilt=Math.max(debugTrace.maxTilt,values.visualTilt);}
+  if(Number.isFinite(values.visualScale))debugTrace.maxScale=Math.max(debugTrace.maxScale,values.visualScale);
+  if(values.transform)debugTrace.transform=values.transform;if(values.shadow)debugTrace.shadow=values.shadow;
   const v={pointer:'—',velocityX:'0.00',tilt:'0.00°',scale:'1.000',dragging:'false',target:'—',reducedMotion:String(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false),...values};
-  panel.textContent=`DRAG STATE\npointer: ${v.pointer}\nvelocityX: ${v.velocityX}\ntilt: ${v.tilt}\nscale: ${v.scale}\ndragging: ${v.dragging}\ntarget: ${v.target}\nreducedMotion: ${v.reducedMotion}`;
+  const range=Number.isFinite(debugTrace.minTilt)?`${debugTrace.minTilt.toFixed(2)}° / ${debugTrace.maxTilt.toFixed(2)}°`:'—';
+  panel.textContent=`DRAG STATE\npointer: ${v.pointer}\nvelocityX: ${v.velocityX}\ntilt: ${v.tilt}\ntiltRange: ${range}\nscale: ${v.scale} (max ${debugTrace.maxScale.toFixed(3)})\ndragging: ${v.dragging}\ntarget: ${v.target}\nreducedMotion: ${v.reducedMotion}\ntransform: ${debugTrace.transform}\nshadow: ${debugTrace.shadow}`;
 }
 document.addEventListener('click',e=>{if(performance.now()<suppressClickUntil){e.preventDefault();e.stopImmediatePropagation();}},true);
 function bindLayouts(){
@@ -107,7 +113,7 @@ function startDrag(e,el,kind){
   let lastInput=performance.now(),lastPointerX=startX,velocityX=0,velocityTilt=0,currentTilt=0,lastFrame=0,pickedAt=0,anchor={x:0,y:0},lastPose=null;
   const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
   const weight=kind==='card'?'paper':'folder';
-  dragDebug({pointer:`${Math.round(startX)} / ${Math.round(startY)}`,dragging:'false'});
+  dragDebug({pointer:`${Math.round(startX)} / ${Math.round(startY)}`,dragging:'false'},true);
   const pressTransform=getComputedStyle(el).transform;
   el.classList.add('paper-pressed');
   const press=reduced?null:el.animate?.([{transform:pressTransform},{transform:pressTransform+' scale(.995)'}],{duration:80,fill:'forwards',easing:'ease-out'});
@@ -152,7 +158,7 @@ function startDrag(e,el,kind){
     clone.style.setProperty('--drag-shadow',`1px ${2+10*lift}px ${3+15*lift}px rgba(75,59,41,${.22+.1*lift})`);
     clone.style.setProperty('--tab-tilt',`${-currentTilt*.4}deg`);
     const next=findTarget();if(next!==target){target?.classList.remove('drop-hover');target=next;target?.classList.add('drop-hover');}
-    dragDebug({pointer:`${Math.round(x)} / ${Math.round(y)}`,velocityX:velocityX.toFixed(2),tilt:`${currentTilt.toFixed(2)}°`,scale:lastPose.scale.toFixed(3),dragging:'true',target:target?.dataset.drop||'—',reducedMotion:String(reduced)});
+    if(window.DESK_DEBUG){const cs=getComputedStyle(clone),m=new DOMMatrixReadOnly(cs.transform),visualScale=Math.hypot(m.a,m.b),visualTilt=Math.atan2(m.b,m.a)*180/Math.PI-rotation;dragDebug({pointer:`${Math.round(x)} / ${Math.round(y)}`,velocityX:velocityX.toFixed(2),tilt:`${visualTilt.toFixed(2)}°`,scale:visualScale.toFixed(3),dragging:'true',target:target?.dataset.drop||'—',reducedMotion:String(reduced),visualTilt,visualScale,transform:cs.transform,shadow:cs.boxShadow});}
     if(!reduced&&(age<140||Math.abs(currentTilt)>.015||Math.abs(desired)>.015))frame=requestAnimationFrame(paint);
   }
   function onMove(ev){
