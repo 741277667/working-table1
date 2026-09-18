@@ -1,5 +1,5 @@
-import {bindContinuousInput,installTooltips} from './interactions.mjs?v=9';
-import {paperTilt,paperPose,paperVariant} from './tactile.mjs?v=9';
+import {bindContinuousInput,installTooltips} from './interactions.mjs?v=10';
+import {paperTilt,paperPose,paperVariant} from './tactile.mjs?v=10';
 import {migrate,validState as validate,archiveCard,restoreCard,projectAction,visibleCard} from './model.mjs';
 const $=(s,p=document)=>p.querySelector(s), $$=(s,p=document)=>[...p.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -172,7 +172,7 @@ function startDrag(e,el,kind){
   }
   function cleanup(){
     pendingPointer=null;press?.cancel();el.classList.remove('paper-pressed');
-    cancelAnimationFrame(frame);if(placeholder){placeholder.replaceWith?.(el);placeholder=null;}el.style.cssText=sourceStyle;if(sourceAria===null)el.removeAttribute?.('aria-hidden');else el.setAttribute?.('aria-hidden',sourceAria);delete el.dataset.weight;clone=null;document.body.classList.remove('dragging');
+    cancelAnimationFrame(frame);if(placeholder){placeholder.replaceWith?.(el);placeholder=null;}el.style.cssText=sourceStyle;el.classList.remove('drag-proxy');if(sourceAria===null)el.removeAttribute?.('aria-hidden');else el.setAttribute?.('aria-hidden',sourceAria);delete el.dataset.weight;clone=null;document.body.classList.remove('dragging');
     $$('.drop-ready,.drop-hover').forEach(n=>n.classList.remove('drop-ready','drop-hover'));
     document.removeEventListener('pointermove',onMove);document.removeEventListener('pointerup',onUp);document.removeEventListener('pointercancel',cancel);document.removeEventListener('keydown',onKey);window.removeEventListener('blur',cancel);
     if(el.hasPointerCapture(e.pointerId))el.releasePointerCapture(e.pointerId);
