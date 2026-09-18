@@ -49,6 +49,7 @@ vm.runInContext("state.cards[2].positions={};startDrag(testDown,testElement,'car
 console.log('PASS: drag threshold, no writes during motion, 300px movement without snapback, persisted coordinates, pointer cancellation, scroll compensation');
 
 assert.equal(paperTilt(100),-6.5);assert.equal(paperTilt(-100),6.5);assert.equal(paperTilt(0),0);
+assert.equal(paperTilt(.6),-5.3999999999999995);assert.equal(paperTilt(.6,'folder'),-3.3);
 for(const base of [-2,0,2])for(const velocity of [-20,0,20])for(const anchor of [{x:0,y:0},{x:80,y:-60}]){
  const pose=paperPose(300,130,base,paperTilt(velocity),1,anchor),a=(pose.angle-base)*Math.PI/180;
  const gripX=pose.x+pose.scale*(anchor.x*Math.cos(a)-anchor.y*Math.sin(a));

@@ -1,5 +1,5 @@
-import {bindContinuousInput,installTooltips} from './interactions.mjs?v=7';
-import {paperTilt,paperPose,paperVariant} from './tactile.mjs?v=7';
+import {bindContinuousInput,installTooltips} from './interactions.mjs?v=8';
+import {paperTilt,paperPose,paperVariant} from './tactile.mjs?v=8';
 import {migrate,validState as validate,archiveCard,restoreCard,projectAction,visibleCard} from './model.mjs';
 const $=(s,p=document)=>p.querySelector(s), $$=(s,p=document)=>[...p.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

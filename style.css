@@ -83,7 +83,7 @@ button:active:not(.zone-title):not(.module-title){translate:0 1px}
 .detail,.drawer{animation-duration:180ms}
 @media(prefers-reduced-motion:reduce){.zone.drop-hover,.module.drop-hover{translate:none}.module.drop-hover:before{transform:none}button:active{translate:none!important}.paper-pressed{box-shadow:var(--paper-contact)!important}}
 
-/* v7: one transform writer for the proxy, stronger pickup, observable QA. */
+/* v8: one transform writer for the proxy, stronger pickup, observable QA. */
 .drag-proxy{translate:none!important;scale:none!important;transition:none!important;animation:none!important}
 .detail{overflow-anchor:none}
 #drag-debug{position:fixed;left:10px;bottom:88px;z-index:2000;margin:0;padding:8px 10px;background:#fbf3ddf2;color:#6c5745;border:1px solid #a9967c;box-shadow:1px 3px 5px #4b3b292b;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;pointer-events:none;white-space:pre-wrap;transform:rotate(-.3deg)}

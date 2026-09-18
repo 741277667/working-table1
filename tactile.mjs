@@ -1,4 +1,4 @@
-export function paperTilt(velocityX,weight="paper"){const limit=weight==="paper"?6.5:3.5;return Math.max(-limit,Math.min(limit,-velocityX*(weight==="paper"?5.8:3.2)))||0;}
+export function paperTilt(velocityX,weight="paper"){const limit=weight==="paper"?6.5:3.5;return Math.max(-limit,Math.min(limit,-velocityX*(weight==="paper"?9:5.5)))||0;}
 export function paperPose(dx,dy,baseAngle,tilt,lift,anchor,weight="paper"){
   const scale=1+(weight==="paper"?.055:.035)*lift,angle=baseAngle*(1-.3*lift)+tilt;
   const radians=(angle-baseAngle)*Math.PI/180;
