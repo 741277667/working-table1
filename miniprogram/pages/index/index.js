@@ -49,9 +49,9 @@ Page({
     this.setData({state:s,zones:projects,cards:cards.map(c=>({...c,paper:paper(c),rotation:c.visual_dna?.rotation||0})),modules,currentProject:projects.find(z=>z.id===this.data.currentProject)||s.projects.find(z=>z.id===this.data.currentProject)||null,...(this.data.screen==='detail'?{selected:selected?{...selected,paper:paper(selected)}:null}:{}),...{todayCount:counts.today,inboxCount:counts.inbox,archiveCount:counts.archive}});
   },
   goDesk(){this.setData({screen:'desk',nav:'desk',currentProject:null,currentModule:'',selected:null,selectedId:null});this.refresh();},
-  openProject(e){const id=e.currentTarget.dataset.id;this.setData({screen:'project',currentProject:id,nav:'desk'});this.refresh();},
+  openProject(e){const id=e.currentTarget.dataset.id;this.setData({screen:'project',currentProject:id,currentModule:'',nav:'desk'});this.refresh();},
   openFolder(e){this.setData({screen:'folder',currentModule:e.currentTarget.dataset.name,composerValue:''});this.refresh();},
-  openTray(e){const nav=e.currentTarget.dataset.nav;this.setData({screen:'tray',nav});this.refresh();},
+  openTray(e){const nav=e.currentTarget.dataset.nav;this.setData({screen:'tray',nav,currentProject:null,currentModule:''});this.refresh();},
   openCard(e){if(Date.now()<(this.suppressTapUntil||0))return;this.setData({screen:'detail',selectedId:e.currentTarget.dataset.id,checkValue:''});this.refresh();},
   back(){if(this.data.screen==='detail'){this.setData({screen:this.data.currentModule?'folder':this.data.currentProject?'project':'tray'});}else if(this.data.screen==='folder')this.setData({screen:'project'});else this.goDesk();this.refresh();},
   onComposerInput(e){this.setData({composerValue:e.detail.value});},
