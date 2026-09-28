@@ -1,0 +1,12 @@
+{
+  "pages": ["pages/index/index"],
+  "window": {
+    "navigationBarTitleText": "慢慢来 · 个人桌面",
+    "navigationBarBackgroundColor": "#eee9dd",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#eee9dd",
+    "backgroundTextStyle": "light"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

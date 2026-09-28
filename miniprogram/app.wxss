@@ -1,0 +1,10 @@
+page {
+  min-height: 100%;
+  color: #39342e;
+  background: #eee9dd;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  font-size: 14px;
+}
+button { margin: 0; padding: 0; border: 0; background: transparent; color: inherit; line-height: inherit; }
+button::after { border: 0; }
+input, textarea { color: #39342e; }

@@ -1,0 +1,72 @@
+<view class="app-shell {{reducedMotion?'reduced':''}}">
+  <view class="topbar">
+    <button class="brand" data-action="desk" bindtap="goDesk">慢慢来 <text>PERSONAL DESK</text></button>
+    <view class="top-actions"><button class="utility" aria-label="搜索纸片" data-nav="search" bindtap="openTray">⌕</button><button class="utility" aria-label="导入桌面备份" bindtap="onImport">↑</button><button class="utility" aria-label="导出桌面备份" bindtap="onExport">↓</button></view>
+  </view>
+
+  <view wx:if="{{screen==='desk'}}" class="screen">
+    <view class="page-heading"><view><text class="eyebrow">MY LITTLE DESK</text><text class="heading">我的桌面</text></view><text class="save-state">{{statusText}}</text></view>
+    <view class="zone-list">
+      <view wx:for="{{zones}}" wx:key="id" class="zone drop-target zone-{{item.style}}" data-project="{{item.id}}" bindtap="openProject">
+        <view class="zone-title"><view><text class="zone-name">{{item.name}}</text><text class="zone-en">{{item.style}}</text></view><text class="arrow">↗</text></view>
+        <view class="mini-papers">
+          <view wx:for="{{state.cards}}" wx:for-item="card" wx:key="id" wx:if="{{card.home_area===item.id && card.surface!=='archive' && card.surface!=='trash'}}" class="mini-paper {{card.visual_dna.family}} {{drag && drag.id===card.id?'drag-hidden':''}}" data-id="{{card.id}}" catchtap="openCard" catchtouchstart="onCardTouchStart" catchtouchmove="onCardTouchMove" catchtouchend="onCardTouchEnd" catchtouchcancel="onCardTouchCancel">
+            <text class="paper-title">{{card.title}}</text><text class="paper-kind">{{card.type}}</text>
+          </view>
+          <text wx:if="{{!state.cards.length}}" class="paper-empty">还没有纸片</text>
+        </view>
+        <text class="zone-count">{{item.name==='生活'?'生活与日常':'收集在这里'}}　·　打开文件夹</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{screen==='project'}}" class="screen">
+    <view class="page-heading"><view><button class="back" bindtap="goDesk">← 桌面</button><text class="eyebrow">{{currentProject.style}}</text><text class="heading">{{currentProject.name}}</text></view><button class="add-paper" bindtap="addCard">＋ 纸条</button></view>
+    <view class="folder-list">
+      <view wx:for="{{modules}}" wx:key="name" class="folder drop-target" data-module="{{item.name}}" bindtap="openFolder" data-name="{{item.name}}">
+        <view class="folder-tab"></view><text class="folder-name">{{item.name}}</text><text class="folder-count">{{item.count}} 张纸</text><text class="folder-arrow">→</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{screen==='folder'}}" class="screen folder-screen">
+    <view class="page-heading"><view><button class="back" bindtap="back">← {{currentProject.name}}</button><text class="eyebrow">文件夹</text><text class="heading">{{currentModule}}</text></view><text class="save-state">{{cards.length}} 张纸</text></view>
+    <scroll-view class="paper-scroll" scroll-y enable-flex>
+      <view class="paper-list">
+        <view wx:for="{{cards}}" wx:key="id" class="paper-card {{item.paper}} {{drag && drag.id===item.id?'drag-hidden':''}}" data-id="{{item.id}}" catchtap="openCard" catchtouchstart="onCardTouchStart" catchtouchmove="onCardTouchMove" catchtouchend="onCardTouchEnd" catchtouchcancel="onCardTouchCancel">
+          <text class="card-type">{{item.type}}</text><text class="paper-title">{{item.title}}</text><text wx:if="{{item.summary}}" class="summary">{{item.summary}}</text>
+          <text wx:if="{{item.type==='LIST'}}" class="check-preview">{{item.checklist.length}} 个清单项</text>
+        </view>
+        <view wx:if="{{!cards.length}}" class="empty-note">这只文件夹还空着，写下第一件小事吧。</view>
+      </view>
+    </scroll-view>
+    <view class="composer"><text class="composer-plus">＋</text><input value="{{composerValue}}" bindinput="onComposerInput" bindconfirm="onComposerConfirm" confirm-type="send" maxlength="120" placeholder="添加一条……" aria-label="添加一条纸片" focus="{{screen==='folder'}}"/><button bindtap="addCard" aria-label="添加纸片">收好</button></view>
+  </view>
+
+  <view wx:if="{{screen==='tray'}}" class="screen">
+    <view class="page-heading"><view><button class="back" bindtap="goDesk">← 桌面</button><text class="eyebrow">PAPER TRAY</text><text class="heading">{{nav==='today'?'TODAY':nav==='inbox'?'INBOX':nav==='archive'?'ARCHIVE':nav==='trash'?'废纸篓':'搜索'}}</text></view><view class="heading-actions"><button wx:if="{{nav==='archive'}}" class="add-paper" data-nav="trash" bindtap="openTray">废纸篓</button><button wx:if="{{nav==='inbox'}}" class="add-paper" bindtap="addCard">＋ 纸条</button></view></view>
+    <input wx:if="{{nav==='search'}}" class="search-input" placeholder="搜索纸片" bindinput="onSearch" />
+    <view class="paper-list tray-list">
+      <view wx:for="{{cards}}" wx:key="id" class="paper-card {{item.paper}}" data-id="{{item.id}}" bindtap="openCard"><text class="card-type">{{item.type}}</text><text class="paper-title">{{item.title}}</text><text wx:if="{{item.summary}}" class="summary">{{item.summary}}</text><button wx:if="{{nav==='archive' || nav==='trash'}}" class="restore" data-id="{{item.id}}" catchtap="restoreCard">恢复</button></view>
+      <view wx:if="{{!cards.length}}" class="empty-note">这里暂时没有纸片。</view>
+    </view>
+  </view>
+
+  <view wx:if="{{screen==='detail' && selected}}" class="screen detail-screen">
+    <view class="page-heading"><view><button class="back" bindtap="back">← 返回</button><text class="eyebrow">{{selected.type}} · {{selected.paper}}</text></view><button class="finish" bindtap="finishCard">✓ 完成</button></view>
+    <scroll-view class="detail-scroll" scroll-y>
+      <view class="detail-paper {{selected.paper}}"><text class="card-type">{{selected.type}}</text><input class="title-input" value="{{selected.title}}" bindinput="editTitle" maxlength="100" aria-label="纸片标题"/><textarea class="notes-input" value="{{selected.notes}}" bindinput="editNotes" maxlength="2000" auto-height placeholder="在这里展开这一页……" aria-label="纸片内容"/></view>
+      <view wx:if="{{selected.type==='LIST'}}" class="checklist"><text class="section-label">清单</text><view wx:for="{{selected.checklist}}" wx:key="id" class="check-item" data-id="{{item.id}}" bindtap="toggleCheck"><text class="checkbox {{item.done?'checked':''}}">{{item.done?'✓':''}}</text><text class="check-text {{item.done?'checked-text':''}}">{{item.text}}</text></view><view class="check-composer"><text>＋</text><input value="{{checkValue}}" bindinput="onCheckInput" bindconfirm="addCheck" confirm-type="done" placeholder="添加清单项" aria-label="添加清单项" focus="{{screen==='detail' && selected.type==='LIST'}}"/></view></view>
+      <button class="trash-action" bindtap="trashCard">丢入废纸篓</button>
+    </scroll-view>
+  </view>
+
+  <view wx:if="{{drag}}" class="drag-proxy" style="left:{{drag.x}}px;top:{{drag.y}}px;transform:translate(-50%,-55%) rotate({{drag.tilt}}deg) scale({{reducedMotion?1:1.045}})"><text>{{drag.title}}</text><text class="lift-mark">拿起 · 移动到文件夹</text></view>
+
+  <view wx:if="{{screen!=='detail'}}" class="tabbar">
+    <button class="{{nav==='desk'?'active':''}}" data-nav="desk" bindtap="goDesk"><text>⌂</text><text>桌面</text></button>
+    <button class="{{nav==='today'?'active':''}}" data-nav="today" bindtap="openTray"><text>◷</text><text>TODAY</text></button>
+    <button class="{{nav==='inbox'?'active':''}}" data-nav="inbox" bindtap="openTray"><text>▤</text><text>INBOX</text></button>
+    <button class="{{nav==='archive'?'active':''}}" data-nav="archive" bindtap="openTray"><text>▱</text><text>Archive</text></button>
+  </view>
+</view>
